@@ -14,7 +14,7 @@ import calendar
 
 class Income(models.Model):
     user = models.ForeignKey(myUser, related_name="incomes", on_delete=models.SET_NULL, null=True)
-    created_Date = models.DateField(auto_now=True)
+    created_Date = models.DateField(auto_now_add=True)
     incCategory = models.ForeignKey(IncomeCategory, on_delete=models.CASCADE, null=True)
     amount = models.FloatField(default=0, blank=True)
     note = models.TextField(null=True, blank=True)
