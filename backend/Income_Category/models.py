@@ -15,7 +15,7 @@ class IncomeCategory(models.Model):
     user = models.ForeignKey(myUser, related_name="categories", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True, blank=True)
     image = models.ImageField(upload_to='media/', null=True, blank=True)
-    date = models.DateField(auto_now=True)
+    date = models.DateField(auto_now_add=True)
     
     def __str__(self) -> str:
         return self.name

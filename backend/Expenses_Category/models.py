@@ -13,7 +13,7 @@ from django.db.models.signals import post_save
 class ExpensesCategory(models.Model):
     user = models.ForeignKey(myUser, related_name="expense_categories", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True, blank=True)
-    date = models.DateField(auto_now=True)
+    date = models.DateField(auto_now_add=True)
     image = models.ImageField(upload_to='media/', null=True, blank=True)
     
     def __str__(self) -> str:
