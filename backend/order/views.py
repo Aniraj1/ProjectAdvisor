@@ -153,13 +153,13 @@ def create_checkout_session(request):
     global session_dict
     if checkout_session:
         session_dict = {"session":checkout_session,"customer_id":checkout_session.customer}
-    print(session_dict)
+    # print(session_dict)
     return Response({"session":checkout_session})
 
 @api_view(["GET"])
 # @permission_classes([IsAuthenticated])
 def customer_portal(request):
-    print({"customer":session_dict})
+    # print({"customer":session_dict})
     try:
         stripe_customer_id = session_dict['customer_id']
         print("stripe_customer_id",stripe_customer_id)
