@@ -162,7 +162,7 @@ def customer_portal(request):
     # print({"customer":session_dict})
     try:
         stripe_customer_id = session_dict['customer_id']
-        print("stripe_customer_id",stripe_customer_id)
+        # print("stripe_customer_id",stripe_customer_id)
         
         customer_session = stripe.billing_portal.Session.create(
             customer  = stripe_customer_id,
