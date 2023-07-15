@@ -1,3 +1,4 @@
+from django.core.mail import send_mail
 import os
 from django.views import View
 from django.shortcuts import get_object_or_404, render
@@ -86,6 +87,7 @@ def delete_order(request,pk):
 
 
 stripe.api_key = config("STRIPE_PRIVATE_KEY")
+session_dict = dict()
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated]) #! --- authentiaction
@@ -107,6 +109,16 @@ def create_checkout_session(request):
         quantity = i["quantity"]
         print(quantity)
         # total_amount = unit_amount * quantity
+        
+        try:
+            customer = stripe.Customer.create(
+                email = user.email,
+                
+            )
+        except Exception as e: 
+            print("Error in creating customer")
+            return Response({"Error":f"{e}"},status = status.HTTP_400_BAD_REQUEST)
+        
         checkout_order_items.append({
             "price_data":{
                 "currency" : "npr",
@@ -123,21 +135,46 @@ def create_checkout_session(request):
             "quantity":quantity
         })
     checkout_session = stripe.checkout.Session.create(
+        customer = customer.id,
         payment_method_types = ['card'],
         metadata = user_details,
         # total_amount= checkout_session.metadata.product,
         line_items = checkout_order_items,
-        customer_email = user.email,
+        # customer_email = user.email,
         # amount_total = total_amount,
         mode = 'subscription',
         # subscription_data = {'trial_period_days':0,},#! <--------- trail period ----------->
         success_url = YOUR_DOMAIN,
         cancel_url = YOUR_DOMAIN,
+       
         # idempotency_key="keeee"
+        
     )
-    # print(checkout_session)
+    global session_dict
+    if checkout_session:
+        session_dict = {"session":checkout_session,"customer_id":checkout_session.customer}
+    print(session_dict)
     return Response({"session":checkout_session})
 
+@api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+def customer_portal(request):
+    print({"customer":session_dict})
+    try:
+        stripe_customer_id = session_dict['customer_id']
+        print("stripe_customer_id",stripe_customer_id)
+        
+        customer_session = stripe.billing_portal.Session.create(
+            customer  = stripe_customer_id,
+            return_url = "http://localhost:8000/",
+        )  
+        return Response({"session":customer_session})
+    except Exception as e:
+        print("error in customer portal function ",e)
+        # print({"session":session})
+    return Response({"Error":"No session found"})
+    # return Response({"session":customer_session})
+    
 @csrf_exempt
 @api_view(["POST"])
 # @permission_classes([IsAdminUser])
