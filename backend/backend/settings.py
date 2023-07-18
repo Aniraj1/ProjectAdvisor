@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     #! rest_framework and Simple_JWT
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework.authtoken',#*  ----------  new for unittetsing
     
     #!local
     'users',

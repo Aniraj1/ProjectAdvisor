@@ -35,15 +35,15 @@ def get_product(request,pk):
     product = get_object_or_404(Product,id = pk) #! ------ adds the object not found logic ----!#
     print("product",product)
     serializer = ProductSerializer(product,many=False)
-    return Response({"id":serializer.data})
+    return Response({"id":serializer.data},status=status.HTTP_200_OK)
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated,IsAdminUser])
 def add_product(request):
     user = request.user
-    print({"user":user})
+    # print({"user":user})
     data = request.data
-    print(data)
+    # print(data)
     
     product = data['product']
     
