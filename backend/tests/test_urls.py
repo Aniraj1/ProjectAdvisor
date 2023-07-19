@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 from django.urls import reverse,resolve
 from product.views import add_product,get_products,get_product,update_product,delete_product,CreateCheckoutSessionView
-from order.views import get_order,get_single_order
+from order.views import get_order,get_single_order,add_order,process_order,delete_order,create_checkout_session
 
 class ProductTestUrls(SimpleTestCase):
     
@@ -35,3 +35,23 @@ class OrderTestUrls(SimpleTestCase):
     def test_get_orders(self):
         url = reverse('get-all-orders')
         self.assertEquals(resolve(url).func,get_order)
+    
+    def test_get_single_order(self):
+        url = reverse('get-single-order',kwargs={'pk':1})
+        self.assertEquals(resolve(url).func,get_single_order)
+    
+    def test_add_order(self):
+        url = reverse('add-new-order')    
+        self.assertEquals(resolve(url).func,add_order)
+    
+    def test_delete_order(self):
+        url = reverse('delete-order',kwargs={'pk':1})
+        self.assertEquals(resolve(url).func,delete_order)
+    
+    def test_update_order(self):
+        url = reverse('update-order',kwargs = {'pk':1})
+        self.assertEquals(resolve(url).func,process_order)
+        
+    def test_order_create_checkout(self):
+        url = reverse('create-checkout-session')
+        self.assertEquals(resolve(url).func,create_checkout_session)

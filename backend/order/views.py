@@ -65,7 +65,7 @@ def add_order(request):
                 
             )
         serailizer = OrderSerializers(order,many= False)
-        return Response(serailizer.data)
+        return Response(serailizer.data,status=status.HTTP_201_CREATED)
     
 @api_view(["PUT"])
 @permission_classes([IsAdminUser])
@@ -75,7 +75,7 @@ def process_order(request,pk):
     order.payment_status = request.data["payment_status"]
     order.save()
     serializer = OrderSerializers(order,many=False)
-    return Response({"order":serializer.data})
+    return Response({"order":serializer.data},status=status.HTTP_200_OK)
 
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])
@@ -83,7 +83,7 @@ def delete_order(request,pk):
     # order = Order.objects.get(id = pk)
     order = get_object_or_404(Order,id = pk)
     order.delete()
-    return Response({"order-details":f"order for id :{pk} is deleted"})
+    return Response({"order-details":f"order for id :{pk} is deleted"},status=status.HTTP_200_OK)
 
 
 stripe.api_key = config("STRIPE_PRIVATE_KEY")
@@ -154,7 +154,7 @@ def create_checkout_session(request):
     if checkout_session:
         session_dict = {"session":checkout_session,"customer_id":checkout_session.customer}
     # print(session_dict)
-    return Response({"session":checkout_session})
+    return Response({"session":checkout_session},status=status.HTTP_200_OK)
 
 @api_view(["GET"])
 # @permission_classes([IsAuthenticated])

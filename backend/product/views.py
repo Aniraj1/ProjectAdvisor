@@ -33,7 +33,7 @@ def get_products(request):
 def get_product(request,pk):
     # product  = Product.objects.get(id = pk)
     product = get_object_or_404(Product,id = pk) #! ------ adds the object not found logic ----!#
-    print("product",product)
+    # print("product",product)
     serializer = ProductSerializer(product,many=False)
     return Response({"id":serializer.data},status=status.HTTP_200_OK)
 
@@ -55,7 +55,7 @@ def add_product(request):
             user = user,
         )
     serializer = ProductSerializer(product,many=False)
-    print(serializer.data)
+    # print(serializer.data)
     return Response(serializer.data)
 
 @api_view(["PUT"])
