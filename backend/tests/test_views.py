@@ -13,7 +13,6 @@ class TestViews(APITestCase):
     def setUp(self):  # * ---setup code
         self.client = APIClient()
         self.products_url = reverse("get-all-products")
-        self.product1 = Product.objects.create(name="Premium", price=99.0,description =" this is a premium product")
         self.product_url = reverse("get-product-pk", kwargs={"pk": 1})
         self.add_product_url = reverse("add-product")
         self.update_product_url=reverse("update-product",kwargs={"pk":1})
@@ -33,7 +32,7 @@ class TestViews(APITestCase):
             )
             self.client.force_authenticate(user=self.test_user)
             t = myUser.objects.get(username="admin")
-            print("user created",t.username)
+            # print("user created",t.username)
         except Exception as e:
             print("error creating a user")
             print(e)
@@ -79,8 +78,8 @@ class TestViews(APITestCase):
         }
         
         response = self.client.put(self.update_product_url, data=format_, format="json")
-        print("Response Content:", response.content)
-        print("Response Status Code:", response.status_code)
+        # print("Response Content:", response.content)
+        # print("Response Status Code:", response.status_code)
         self.assertEquals(response.status_code, 200)
 
     def test_views_delete_product(self):
