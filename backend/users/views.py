@@ -5,6 +5,7 @@ from users.serializers import UserRegistrationSerializers, UserLoginSerializer, 
 from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated
 from datetime import datetime, timedelta
+from .models import myUser
 
 
 # ==== For refresh Token ====
@@ -18,10 +19,29 @@ from users.render.renderers import UserRenderer
 # ===== Importing custom token =====
 from users.token.token import get_tokens_for_user
 from rest_framework.exceptions import APIException
+from django.core.exceptions import ValidationError
 
 ## === For sending an email
 from django.core.mail import send_mail
 from django.conf import settings
+
+##! === Getting all users ===\
+    
+class getAll(APIView):
+    renderer_classes = [UserRenderer]
+
+    # === adding a Permission ====
+    permission_classes = [IsAuthenticated]
+
+    def get(self, requset, format=None):
+        user = myUser.objects.all()
+        # === Getting the detail of specific user only
+        serializer = UserProfileSerializer(user, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
 
 # === Creating a UserRegistrationView ====
 class UserRegistrationView(APIView):
@@ -31,7 +51,16 @@ class UserRegistrationView(APIView):
 
     def post(self, request, format=None):
         try:
-            serializer = UserRegistrationSerializers(data=request.data)
+            
+            # Converting QueryDict to dict and make data mutable
+            mutable_data = request.data.dict()
+            for key, value in mutable_data.items():
+                if isinstance(value, str):
+                    mutable_data[key] = value.strip()
+            
+            
+            
+            serializer = UserRegistrationSerializers(data=mutable_data)
     
             if serializer.is_valid(raise_exception=True):
                 user = serializer.save()
@@ -49,6 +78,9 @@ class UserRegistrationView(APIView):
     
         except APIException as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except ValidationError as e:
+            return Response({'error': 'Invalid data format !!!'}, status=status.HTTP_400_BAD_REQUEST)
     
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
