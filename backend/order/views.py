@@ -179,7 +179,6 @@ def customer_portal(request):
 @api_view(["POST"])
 # @permission_classes([IsAdminUser])
 def stripe_webhook(request):  
-    # webhook_secret = "whsec_599dbf3f66bece9e8b11c8c2c8bc3927fa67d82a15bf76a8fc1b85b70652aff0"
     webhook_secret = config("STRIPE_WEBHOOK_SECRET")
     payload = request.body
     # print(payload)
