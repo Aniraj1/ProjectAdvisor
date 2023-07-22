@@ -112,7 +112,7 @@ def add_product(request):
             android=messaging.AndroidConfig(
                 priority="high",
             ),
-            token="c-oqaucjTdqAWXTezytGjw:APA91bH3YyUVSANllTXaYwhzzgotpAS5YmYJfVDbVyJf5LnhzDeFMGMA6Zq5wcMReuvkoxkjXbH7tBQ25PcCCL6SJI6a8KcaEcw1a9rE4Wat4hnQxDFQ5-vLhQaEZdNNsJIw7PGX5iFF"
+            token=""
             # token = devices.registration_id
         )
         devices.send_message(message=message)
