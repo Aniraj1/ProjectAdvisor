@@ -46,6 +46,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework.authtoken',#*  ----------  new for unittetsing
     
+    #! Adding notifications
+    'notifications',
+    
     #!local
     'users',
     

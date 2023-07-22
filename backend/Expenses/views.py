@@ -1,108 +1,3 @@
-# from django.shortcuts import render
-# from django.http import Http404
-# from rest_framework import status
-# from rest_framework.permissions import IsAuthenticated
-# from rest_framework.response import Response
-# from rest_framework.views import APIView
-
-
-# # ==Import from Locals==
-# from Expenses.models import Expenses
-# from Expenses.serializers import ExpenseSerializer
-
-# # === Adding search filter
-# from rest_framework.filters import SearchFilter
-
-# === Creating and getting all Expenses view ===
-# class ExpensesListView(APIView):
-    
-#     #=== Adding permission ===
-#     permission_classes = [IsAuthenticated]
-    
-#     # === Getting all the Expenses list ===
-#     def get(self, request):
-#         try:
-#             results = (
-#                 Expenses.objects.filter(user=request.user)
-#                 # .filter(date__month=str(current_month))
-#                 .order_by("id")
-#             )
-#             serializer = ExpenseSerializer(results, many=True)
-#             filter_backends = [SearchFilter]
-#             search_fields = [ 'name']
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         except:
-#             return Response(
-#                 data={"message": "Unable to retrieve expenses"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-    
-#     # === Adding new data ===
-    
-#     def post(self, request):
-#         serializer = ExpenseSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save(user=request.user)
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# # === Class that handles specific Expenses ===
-# class ExpensesDetailView(APIView):
-    
-#     #=== Adding permission ===
-#     permission_classes = [IsAuthenticated]
-
-#     #===Getting Specific Details / Dealing with ids.
-#     def get_object(self, pk):
-#         try:
-#             return Expenses.objects.get(pk=pk)
-#         except Expenses.DoesNotExist:
-#             raise Http404
-
-#     def get(self, request, pk):
-#         expense = self.get_object(pk)
-#         if request.user == expense.user:
-#             serializer = ExpenseSerializer(expense)
-#             return Response(serializer.data)
-#         else:
-#             return Response(
-#                 data={"message": "Forbidden, Not Authorized"},
-#                 status=status.HTTP_401_UNAUTHORIZED,
-#             )
-    
-#     # === Editing the Expenses ===
-    
-    
-#     def put(self, request, pk):
-#         expense = self.get_object(pk)
-#         if expense.user == request.user:
-#             serializer = ExpenseSerializer(expense, data=request.data, partial = True)
-#             if serializer.is_valid():
-#                 serializer.save()
-#                 return Response(serializer.data, status=status.HTTP_200_OK)
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#         return Response(
-#             {"message": "Forbidden, Not Authorized"},
-#             status=status.HTTP_403_FORBIDDEN,
-#         )
-    
-#     # === Deleting the Expenses ===
-#     def delete(self, request, pk):
-#         expense = self.get_object(pk)
-#         if request.user == expense.user:
-#             expense.delete()
-#             return Response(status=status.HTTP_204_NO_CONTENT)
-#         else:
-#             return Response(
-#                 data={"message": "Forbidden, Not Authorized"},
-#                 status=status.HTTP_401_UNAUTHORIZED,
-#             )
-
-
-
-
-
-
 # === Using Generic API
 from django.shortcuts import render
 from django.http import Http404
@@ -117,6 +12,9 @@ from Expenses.serializers import ExpenseSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .PaginationFiles.cursorPagination import myPagination
 
+
+##! === for signal ===
+from notifications.signals import notify
 # === Creating and getting all Expenses usuing generic API ===
 class ExpensesListView(ListAPIView, CreateAPIView):
     
@@ -146,6 +44,8 @@ class ExpensesListView(ListAPIView, CreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
         
+        notify.send(self.request.user, recipient=self.request.user, verb='limit_almost_spent', target=serializer.instance, description="80 percent of the budget used")
+        
 
 
 
@@ -162,3 +62,24 @@ class ExpensesDetailView(RetrieveUpdateAPIView, DestroyAPIView):
             return Expenses.objects.get(pk=pk, user=self.request.user)
         except Expenses.DoesNotExist:
             raise Http404
+        
+        
+        
+
+# views.py
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from notifications.models import Notification
+from .serializers import NotificationSerializer
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Retrieve notifications for the currently logged-in user
+        notifications = Notification.objects.filter(recipient=request.user).order_by('-timestamp')
+        
+        # Serialize the notifications and return the response
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)

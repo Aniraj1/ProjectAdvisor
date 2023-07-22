@@ -10,3 +10,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expenses
         fields = ["id", "user", "name", "note", "amount", "created_date", "exCategory", "exCategory_name"]
+
+
+# serializers.py
+from notifications.models import Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
