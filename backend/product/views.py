@@ -1,8 +1,9 @@
-
 from typing import Any
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, render
 import stripe
 from django.conf import settings
+
 # from django.http import JsonResponse
 from django.views import View
 from django.views.generic import TemplateView
@@ -14,96 +15,165 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import templates
 from django.shortcuts import redirect
-from rest_framework.decorators import api_view,permission_classes
-from rest_framework.permissions import IsAuthenticated,IsAdminUser
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import status
 
 
-stripe.api_key  = settings.STRIPE_PRIVATE_KEY 
+# from fcm_django.models import FCMDevice,Message
+from fcm_django.models import FCMDevice, messaging
+import firebase_admin
+from firebase_admin import credentials
 
-@api_view(['GET'])
+stripe.api_key = settings.STRIPE_PRIVATE_KEY
+
+
+@api_view(["GET"])
 def get_products(request):
-    filterset = ProductFilter(request.GET,queryset=Product.objects.all().order_by('id'))
+    filterset = ProductFilter(
+        request.GET, queryset=Product.objects.all().order_by("id")
+    )
     # product = Product.objects.all()
     # print("product",filterset.data)
-    serializer = ProductSerializer(filterset.qs,many = True)
-    return Response({"Products": serializer.data,})
-    
-@api_view(['GET'])
-def get_product(request,pk):
+    serializer = ProductSerializer(filterset.qs, many=True)
+    return Response(
+        {
+            "Products": serializer.data,
+        }
+    )
+
+
+@api_view(["GET"])
+def get_product(request, pk):
     # product  = Product.objects.get(id = pk)
-    product = get_object_or_404(Product,id = pk) #! ------ adds the object not found logic ----!#
+    product = get_object_or_404(
+        Product, id=pk
+    )  #! ------ adds the object not found logic ----!#
     # print("product",product)
-    serializer = ProductSerializer(product,many=False)
-    return Response({"id":serializer.data},status=status.HTTP_200_OK)
+    serializer = ProductSerializer(product, many=False)
+    return Response({"id": serializer.data}, status=status.HTTP_200_OK)
+
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated,IsAdminUser])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def add_fcm_device_id(request):
+    user = request.user
+    data = request.data
+    # product = data.get('product')
+
+    fcm_token = data.get("fcm_token")
+    if not fcm_token:
+        return Response({"detail": "FCM token not provided"}, status=400)
+
+    try:
+        cred = credentials.Certificate('/Users/nischal/Documents/project/ProjectAdvisor/serviceaccountkey.json')
+        firebase_admin.initialize_app(cred)
+        device, created = FCMDevice.objects.update_or_create(
+            user=user, defaults={"registration_id": fcm_token}
+        )
+
+    except IntegrityError:
+        return Response({"detail": "This FCM token is already in use."}, status=400)
+    except Exception as e:
+        print("error creating FCM device", e)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def add_product(request):
     user = request.user
     # print({"user":user})
     data = request.data
     # print(data)
-    
-    product = data['product']
-    
+    product = data["product"]
+
     for i in product:
         product = Product.objects.create(
-            name = i['name'],
-            description = i['description'],
-            price = i['price'],
-            user = user,
+            name=i["name"],
+            description=i["description"],
+            price=i["price"],
+            user=user,
         )
-    serializer = ProductSerializer(product,many=False)
+        
+        if not firebase_admin._apps:
+            cred = credentials.Certificate('/Users/nischal/Documents/project/ProjectAdvisor/serviceaccountkey.json')
+            firebase_admin.initialize_app(cred)
+            
+        devices = FCMDevice.objects.all()
+        message = messaging.Message(
+            data={
+                "title": "Product Added",
+                "body": f"a new product named {product.name} has been added to the database by {user.email} ",
+            },
+            notification=messaging.Notification(
+                title="Product Added",
+                body=f"a new product named {product.name} has been added to the database by {user.email} ",
+            ),
+            android=messaging.AndroidConfig(
+                priority="high",
+            ),
+            token="c-oqaucjTdqAWXTezytGjw:APA91bH3YyUVSANllTXaYwhzzgotpAS5YmYJfVDbVyJf5LnhzDeFMGMA6Zq5wcMReuvkoxkjXbH7tBQ25PcCCL6SJI6a8KcaEcw1a9rE4Wat4hnQxDFQ5-vLhQaEZdNNsJIw7PGX5iFF"
+            # token = devices.registration_id
+        )
+        devices.send_message(message=message)
+    serializer = ProductSerializer(product, many=False)
     # print(serializer.data)
     return Response(serializer.data)
 
+
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated,IsAdminUser])
-def update_product(request,pk):
-    product = get_object_or_404(Product,id = pk)
+@permission_classes([IsAuthenticated, IsAdminUser])
+def update_product(request, pk):
+    product = get_object_or_404(Product, id=pk)
     # if product.user != request.user:
     #     return Response({"Details":f"Permission-Denied current user {request.user.email} not allowed to perform the actions requested"},status=status.HTTP_401_UNAUTHORIZED)
-    product.price = request.data['price']
-    product.description = request.data['description']
-    product.name = request.data['name']
-    product.save()  
-    serializer=ProductSerializer(product,many=False)
-    return Response({f"updated : {pk}":serializer.data})
+    product.price = request.data["price"]
+    product.description = request.data["description"]
+    product.name = request.data["name"]
+    product.save()
+    serializer = ProductSerializer(product, many=False)
+    return Response({f"updated : {pk}": serializer.data})
+
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated,IsAdminUser])
-def delete_product(request,pk):
-    data =request.data
-    user =request.user
+@permission_classes([IsAuthenticated, IsAdminUser])
+def delete_product(request, pk):
+    data = request.data
+    user = request.user
     # product = Product.objects.get(id=pk)
-    product = get_object_or_404(Product,id=pk)
+    product = get_object_or_404(Product, id=pk)
     # if product.user != request.user:
     #     return Response({"Details":f"Permission-Denied current user {request.user.email} not allowed to perform the actions requested"},status=status.HTTP_401_UNAUTHORIZED)
 
     product.delete()
-    return Response({"product-details":{f"product for id  : {pk} deleted successfully"}},status=status.HTTP_204_NO_CONTENT)
-    
+    return Response(
+        {"product-details": {f"product for id  : {pk} deleted successfully"}},
+        status=status.HTTP_204_NO_CONTENT,
+    )
+
+
 class ProductLandingPageView(TemplateView):
     template_name = "checkout.html"
-    
+
     def get_context_data(self, **kwargs):
-        product = Product.objects.get(id = 10)
-        context =  super(ProductLandingPageView,self).get_context_data(**kwargs)
-        context.update({
-            "products":product,
-            "STRIPE_PUBLIC_KEY":settings.STRIPE_PUBLIC_KEY,  
-        })
+        product = Product.objects.get(id=10)
+        context = super(ProductLandingPageView, self).get_context_data(**kwargs)
+        context.update(
+            {
+                "products": product,
+                "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
+            }
+        )
         return context
 
-class CreateCheckoutSessionView(View):
 
+class CreateCheckoutSessionView(View):
     YOUR_DOMAIN = "http://localhost:8000"
-        
+
     # def success(request):
     #     return render(request,"success.html")
-    
-    # def post(self,request,*args,**kwargs): 
+
+    # def post(self,request,*args,**kwargs):
     #     checkout_session = stripe.checkout.Session.create(
     #         line_items=[
     #             {
@@ -112,10 +182,10 @@ class CreateCheckoutSessionView(View):
     #                 'quantity': 1,
     #             },
     #         ],
-            
+
     #         mode='payment',
     #         # mode='subscription',  # mode is of three types : payment , subscription , and setup #! ----------------------------------------------------------------------
-             
+
     #         success_url=CreateCheckoutSessionView.YOUR_DOMAIN ,
     #         cancel_url=CreateCheckoutSessionView.YOUR_DOMAIN ,
     #     )
@@ -128,5 +198,3 @@ class CreateCheckoutSessionView(View):
     #     # response = redirect(checkout_session.url)
     #     # response.status_code = 303
     #     return redirect(checkout_session.url)
-        
-
