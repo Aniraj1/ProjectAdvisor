@@ -68,9 +68,27 @@ class OverallLimitView(APIView):
         if overall_limit is None:
             overall_limit = 0
 
-        limit_diff = expenses_total - overall_limit
-        limit_exceeded_percent = round(abs(limit_diff / overall_limit) * 100, 2) if overall_limit != 0 else 0
+        # Calculate the used limit (0 if within the limit, otherwise the exceeded amount)
+        limit_diff = overall_limit - expenses_total
+        
+        #! === Total Limit left for use
+        limit_Left = max(limit_diff, 0)
+        
+        #! == Total Limit used/spend
+        limit_used = overall_limit - limit_Left
+        
+        #! === category_limit_used in percentage
+        limit_used_percent = round(abs(limit_used / overall_limit) * 100, 2) if overall_limit != 0 else 0
+        
+        #! === Total Expenses after Overall_budget Limit 
+        limit_exceeded_by = expenses_total - overall_limit
+        #! == Making sure amount is non negative
+        limitExceeded = max(limit_exceeded_by, 0)
+        
+        #! === Total Expenses after Overall_budget Limit in percentage
+        limit_exceeded_percent = round(abs(limitExceeded  / overall_limit) * 100, 2) if overall_limit != 0 else 0
 
+        #! === Calculating the budget status ===
         if overall_limit == 0:
             budget_status = "Budget limit not set"
         elif expenses_total <= overall_limit:
@@ -82,13 +100,16 @@ class OverallLimitView(APIView):
             "Month": month_name[current_month],
             "overall_limit": overall_limit,
             "expenses_total": expenses_total,
-            "limit_diff": limit_diff,
+            "limit_Left": limit_Left,
+            "Limit_used": limit_used,
+            "limit_used_percent": limit_used_percent,
+            "limit_exceeded_by": limitExceeded,
             "limit_exceeded_percent": limit_exceeded_percent,
             "budget_status": budget_status,
         }
 
         return Response(data)
-    
+
 
 ### === Comparing with each category with limit ===
 class CompareCategoryView(APIView):
@@ -106,29 +127,53 @@ class CompareCategoryView(APIView):
             # if category_limit:
             if category_limit and category_limit.category_limit != 0:
                 category_limit_value = category_limit.category_limit
-                expenses_total = Expenses.objects.filter(user=request.user, exCategory=category, created_date__month=current_month).aggregate(total=Sum('amount'))['total'] or 0
-                limit_diff = expenses_total - category_limit_value
-                budget_status = "Under Budget" if limit_diff <= 0 else "Over Budget"
+                category_expenses_total = Expenses.objects.filter(user=request.user, exCategory=category, created_date__month=current_month).aggregate(total=Sum('amount'))['total'] or 0
                 
-                limit_exceeded_percent = round(abs(limit_diff / category_limit_value) * 100,2) if category_limit_value != 0 else 0
+                
+                # limit_diff = overall_limit - expenses_total
+                
+                limit_diff = category_limit_value - category_expenses_total 
+
+                #! === Total Category Limit left for use
+                category_limit_Left = max(limit_diff, 0)
+               
+                               
+                #! == Total Category Limit used/spend
+                category_limit_used = category_limit_value - category_limit_Left
+                
+                #! === category_limit_used in percentage
+                category_limit_used_percent = round(abs(category_limit_used / category_limit_value) * 100, 2) if category_limit_value != 0 else 0
+                
+                #! === Total Expenses after Category_budget Limit is spent 
+                category_limit_exceeded_by = category_expenses_total - category_limit_value
+                #! == Making sure amount is non negative
+                category_limit_Exceeded = max(category_limit_exceeded_by, 0)
+                
+                #! === Total Expenses after Overall_budget Limit in percentage
+                category_limit_exceeded_percent = round(abs(category_limit_Exceeded  / category_limit_value) * 100, 2) if category_limit_value != 0 else 0
+
+                
+                #! === Calculating the budget status
+                budget_status = "Under the Budget" if category_limit_Exceeded <= 0 else "Over the Budget"
+                
                 
                 
                 category_data = {
                     "Month": month_name[current_month],
                     'category_name': category.name,
                     'category_limit': category_limit_value,
-                    'expenses_total': expenses_total,
-                    'limit_diff': limit_diff,
+                    'category_expenses_total': category_expenses_total,
+                    'category_limit_Left': category_limit_Left,
+                    'category_limit_used': category_limit_used,
+                    'category_limit_used_percent': category_limit_used_percent,
+                    'category_limit_Exceeded': category_limit_Exceeded,                    
+                    'category_limit_exceeded_percent': category_limit_exceeded_percent,
                     'budget_status': budget_status,
-                    'limit_exceeded_percent': limit_exceeded_percent
                 }
 
                 data.append(category_data)
 
         return Response(data)
-    
-    
-
 
 
 
