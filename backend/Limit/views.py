@@ -55,7 +55,7 @@ class OverallLimitView(APIView):
 
     def get(self, request):
         current_month = date.today().month
-        limit = Limit.objects.filter(user=request.user).first()
+        limit = Limit.objects.filter(user=request.user, overall_limit__gt=0).first()
         if limit is None:
             return Response({"message": "Limit not set"}, status=400)
 
@@ -97,15 +97,15 @@ class OverallLimitView(APIView):
             budget_status = "Over the budget"
 
         data = {
-            "Month": month_name[current_month],
-            "overall_limit": overall_limit,
-            "expenses_total": expenses_total,
-            "limit_Left": limit_Left,
-            "Limit_used": limit_used,
-            "limit_used_percent": limit_used_percent,
-            "limit_exceeded_by": limitExceeded,
-            "limit_exceeded_percent": limit_exceeded_percent,
-            "budget_status": budget_status,
+            'Month': month_name[current_month],
+            'overall_limit': overall_limit,
+            'expenses_total': expenses_total,
+            'limit_Left': limit_Left,
+            'Limit_used': limit_used,
+            'limit_used_percent': limit_used_percent,
+            'limit_exceeded_by': limitExceeded,
+            'limit_exceeded_percent': limit_exceeded_percent,
+            'budget_status': budget_status,
         }
 
         return Response(data)
@@ -159,7 +159,7 @@ class CompareCategoryView(APIView):
                 
                 
                 category_data = {
-                    "Month": month_name[current_month],
+                    'Month': month_name[current_month],
                     'category_name': category.name,
                     'category_limit': category_limit_value,
                     'category_expenses_total': category_expenses_total,
