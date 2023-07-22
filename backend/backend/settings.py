@@ -71,6 +71,10 @@ INSTALLED_APPS = [
     ## === # ToDO List ===
     'Todo',
     
+    ##==== notification
+    'fcm_django',
+    'push_notifications',
+    
 ]
 
 MIDDLEWARE = [
@@ -232,7 +236,10 @@ SIMPLE_JWT = {
     "JTI_CLAIM": "jti",
 }
 
-
+PUSH_NOTIFICATIONS_SETTINGS = {
+    "FCM_API_KEY": "AAAAt4teQ08:APA91bH3XSlBGwjp4YzzycXaLw8nK1plpUzNxVW0Tboy8QEKiwl2rmwixwBSKGbUtIIUWBp2au_o0ed8wiDow4PHTAC3NukT-klI0kyB2OU0AHGousQFfFQ62WTwtE1AxtMaReFYYJbU",
+    #...
+}
 
 # === Setting the life of the Reset Password Token ===
 PASSWORD_RESET_TIMEOUT = 500 #for 500 seconds

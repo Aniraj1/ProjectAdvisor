@@ -36,6 +36,9 @@ sqlparse = "==0.4.4"
 typing-extensions = "==4.7.0"
 urllib3 = "==2.0.3"
 gunicorn = "*"
+django-push-notifications = "*"
+fcm-django = "*"
+firebase-admin = "*"
 
 [dev-packages]
 
