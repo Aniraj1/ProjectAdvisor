@@ -27,7 +27,7 @@ from firebase_admin import credentials
 
 stripe.api_key = settings.STRIPE_PRIVATE_KEY
 
-
+#* =================== show products =================== *#
 @api_view(["GET"])
 def get_products(request):
     filterset = ProductFilter(
@@ -42,7 +42,7 @@ def get_products(request):
         }
     )
 
-
+#* =================== show a single product =================== *#
 @api_view(["GET"])
 def get_product(request, pk):
     # product  = Product.objects.get(id = pk)
@@ -53,21 +53,30 @@ def get_product(request, pk):
     serializer = ProductSerializer(product, many=False)
     return Response({"id": serializer.data}, status=status.HTTP_200_OK)
 
-
+#* =================== create a FCM device =================== *#
 @api_view(["POST"])
-@permission_classes([IsAuthenticated, IsAdminUser])
-def add_fcm_device_id(request):
+@permission_classes([IsAuthenticated])
+def add_fcm_device(request):
     user = request.user
     data = request.data
     # product = data.get('product')
 
-    fcm_token = data.get("fcm_token")
+    fcm_token = data["fcm_token"]
     if not fcm_token:
         return Response({"detail": "FCM token not provided"}, status=400)
 
     try:
-        cred = credentials.Certificate('/Users/nischal/Documents/project/ProjectAdvisor/serviceaccountkey.json')
-        firebase_admin.initialize_app(cred)
+        device  = FCMDevice()
+        device.registration_id = fcm_token
+        device.user = user
+        device.save()
+    except Exception as e:
+        print("error creating FCM device",e)
+    
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate('/Users/nischal/Documents/project/ProjectAdvisor/serviceaccountkey.json')
+            firebase_admin.initialize_app(cred)
         device, created = FCMDevice.objects.update_or_create(
             user=user, defaults={"registration_id": fcm_token}
         )
@@ -76,8 +85,9 @@ def add_fcm_device_id(request):
         return Response({"detail": "This FCM token is already in use."}, status=400)
     except Exception as e:
         print("error creating FCM device", e)
+    return Response({'detail':'FCM device added and created successfully'},status=status.HTTP_201_CREATED)
 
-
+#* =================== add a product =================== *#
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def add_product(request):
@@ -120,7 +130,7 @@ def add_product(request):
     # print(serializer.data)
     return Response(serializer.data)
 
-
+#* =================== update a product =================== *##
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def update_product(request, pk):
@@ -134,7 +144,7 @@ def update_product(request, pk):
     serializer = ProductSerializer(product, many=False)
     return Response({f"updated : {pk}": serializer.data})
 
-
+#* =================== delete a product =================== *#
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def delete_product(request, pk):

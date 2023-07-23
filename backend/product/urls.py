@@ -10,5 +10,5 @@ urlpatterns = [
     path("add-product/",views.add_product,name="add-product"),
     path("<int:pk>/update-product/",views.update_product,name="update-product"),
     path("<int:pk>/delete-product/",views.delete_product,name ="delete-product"),
-
+    path('add-FCM/',views.add_fcm_device,name="add-fcm-device"),
 ]
