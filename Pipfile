@@ -39,6 +39,7 @@ gunicorn = "*"
 django-push-notifications = "*"
 fcm-django = "*"
 firebase-admin = "*"
+psycopg2 = "*"
 
 [dev-packages]
 
