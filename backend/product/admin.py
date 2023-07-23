@@ -4,6 +4,7 @@ from . models import Product
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'price', 'user', 'createdAt']
     list_filter = ['price', 'user', 'createdAt']
 
 
