@@ -59,6 +59,7 @@ class OverallLimitView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        user = request.user
         current_month = date.today().month
         limit = Limit.objects.filter(user=request.user, overall_limit__gt=0).first()
         if limit is None:
@@ -109,7 +110,8 @@ class OverallLimitView(APIView):
                         ),
                         token=device.registration_id,
                     )
-                    device.send_message(message=message)
+                    if device.user == user:
+                        device.send_message(message=message)
             except Exception as e:
                 print("error while sending notification in checkout", e)
 
@@ -146,7 +148,8 @@ class OverallLimitView(APIView):
                         ),
                         token=device.registration_id,
                     )
-                    device.send_message(message=message)
+                    if device.user==request.user:
+                        device.send_message(message=message)
             except Exception as e:
                 print("error while sending notification in checkout", e)
 
@@ -183,7 +186,8 @@ class OverallLimitView(APIView):
                         ),
                         token=device.registration_id,
                     )
-                    device.send_message(message=message)
+                    if device.user==request.user:
+                        device.send_message(message=message)
             except Exception as e:
                 print("error while sending notification in checkout", e)
 
@@ -267,7 +271,9 @@ class CompareCategoryView(APIView):
                                 ),
                                 token=device.registration_id,
                             )
-                            device.send_message(message=message)
+                            if device.user==request.user:
+                                device.send_message(message=message)
+
                     except Exception as e:
                         print("error while sending notification in checkout", e)
                 
@@ -296,7 +302,9 @@ class CompareCategoryView(APIView):
                                 ),
                                 token=device.registration_id,
                             )
-                            device.send_message(message=message)
+                            if device.user==request.user:
+                                device.send_message(message=message)
+
                     except Exception as e:
                         print("error while sending notification in checkout", e)
                 #! === Total Expenses after Category_budget Limit is spent 
@@ -330,7 +338,9 @@ class CompareCategoryView(APIView):
                                 ),
                                 token=device.registration_id,
                             )
-                            device.send_message(message=message)
+                            if device.user==request.user:
+                                device.send_message(message=message)
+
                     except Exception as e:
                         print("error while sending notification in checkout", e)
                 

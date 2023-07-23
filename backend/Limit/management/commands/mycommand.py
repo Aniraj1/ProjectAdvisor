@@ -23,7 +23,7 @@ class Command(BaseCommand):
             
                 CompareCategoryView().get(mock_request)
                 
-                # time.sleep(3600)
+                time.sleep(3600)
                 
     
                 
