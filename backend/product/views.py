@@ -125,7 +125,7 @@ def add_product(request):
                 ),
                 token = device.registration_id
             )
-            devices.send_message(message=message)
+            device.send_message(message=message)
     serializer = ProductSerializer(product, many=False)
     # print(serializer.data)
     return Response(serializer.data)
