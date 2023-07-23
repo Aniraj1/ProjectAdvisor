@@ -100,22 +100,22 @@ def add_product(request):
             firebase_admin.initialize_app(cred)
             
         devices = FCMDevice.objects.all()
-        message = messaging.Message(
-            data={
-                "title": "Product Added",
-                "body": f"a new product named {product.name} has been added to the database by {user.email} ",
-            },
-            notification=messaging.Notification(
-                title="Product Added",
-                body=f"a new product named {product.name} has been added to the database by {user.email} ",
-            ),
-            android=messaging.AndroidConfig(
-                priority="high",
-            ),
-            token=""
-            # token = devices.registration_id
-        )
-        devices.send_message(message=message)
+        for device in devices:
+            message = messaging.Message(
+                data={
+                    "title": "Product Added",
+                    "body": f"a new product named {product.name} has been added to the database by {user.email} ",
+                },
+                notification=messaging.Notification(
+                    title="Product Added",
+                    body=f"a new product named {product.name} has been added to the database by {user.email} ",
+                ),
+                android=messaging.AndroidConfig(
+                    priority="high",
+                ),
+                token = device.registration_id
+            )
+            devices.send_message(message=message)
     serializer = ProductSerializer(product, many=False)
     # print(serializer.data)
     return Response(serializer.data)
