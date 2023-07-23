@@ -2,14 +2,15 @@ from django.core.mail import send_mail
 import os
 from django.views import View
 from django.shortcuts import get_object_or_404, render
-from rest_framework.decorators import api_view,permission_classes
-from rest_framework.permissions import IsAuthenticated,IsAdminUser
-from order.models import Order,UserSubscription
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from order.models import Order, UserSubscription
 from order.serializers import OrderSerializers
 from rest_framework.response import Response
 from rest_framework import status
 from product.models import Product
 import stripe
+
 # from backend.settings import STRIPE_PRIVATE_KEY,STRIPE_WEBHOOK_SECERET
 from utils.helpers import get_current_host
 from django.contrib.auth.models import User
@@ -17,219 +18,256 @@ from users.models import myUser
 from django.views.decorators.csrf import csrf_exempt
 from decouple import config
 
+# *=====FCM device=====*#
+from fcm_django.models import FCMDevice, messaging
+import firebase_admin
+from firebase_admin import credentials
+
+
 @api_view(["GET"])
 def get_order(request):
     order = Order.objects.all()
     # order = get_object_or_404(Order)
-    serializer = OrderSerializers(order,many=True)
-    return Response({"Order":serializer.data})
+    serializer = OrderSerializers(order, many=True)
+    return Response({"Order": serializer.data})
+
 
 @api_view(["GET"])
-def get_single_order(request,pk):
-    order =Order.objects.filter(user_id=pk)
-    serializer = OrderSerializers(order,many = True)
+def get_single_order(request, pk):
+    order = Order.objects.filter(user_id=pk)
+    serializer = OrderSerializers(order, many=True)
     return Response(serializer.data)
 
+
 @api_view(["POST"])
-@permission_classes([IsAuthenticated,])
+@permission_classes(
+    [
+        IsAuthenticated,
+    ]
+)
 def add_order(request):
-    
-    user = request.user #! -- User authentication- ------------- --------------->
-    print("user",user)
+    user = request.user  #! -- User authentication- ------------- --------------->
+    print("user", user)
     data = request.data
-    user_subscription,created = UserSubscription.objects.get_or_create(user=user)
-    orders = data['order']
-    
+    user_subscription, created = UserSubscription.objects.get_or_create(user=user)
+    orders = data["order"]
+
     if orders and len(orders) == 0:
-        return Response({"Error":"No order was made please check and try again"},status = status.HTTP_400_BAD_REQUEST)
-    
+        return Response(
+            {"Error": "No order was made please check and try again"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     else:
         #! -- create order
-        
+
         for i in orders:
-            total_amount = sum(i['price'] * i['quantity'] for i in orders)
-            product_id=i['product']
-            products = Product.objects.get(id = product_id)
-            
-            if not user_subscription.can_order :
-                return Response({"Details":f"User already made the order for Product ID : {product_id}"},status=status.HTTP_401_UNAUTHORIZED)
-        
+            total_amount = sum(i["price"] * i["quantity"] for i in orders)
+            product_id = i["product"]
+            products = Product.objects.get(id=product_id)
+
+            if not user_subscription.can_order:
+                return Response(
+                    {
+                        "Details": f"User already made the order for Product ID : {product_id}"
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
             order = Order.objects.create(
-                product = products,
+                product=products,
                 # name = i['name'],
                 # user = products.user,
-                total_amount = total_amount,
-                user=user, #! --  user authentication------------>
-                
-                price = i['price']
-                
+                total_amount=total_amount,
+                user=user,  #! --  user authentication------------>
+                price=i["price"],
             )
-        serailizer = OrderSerializers(order,many= False)
-        return Response(serailizer.data,status=status.HTTP_201_CREATED)
-    
+        serailizer = OrderSerializers(order, many=False)
+        return Response(serailizer.data, status=status.HTTP_201_CREATED)
+
+
 @api_view(["PUT"])
 @permission_classes([IsAdminUser])
-def process_order(request,pk):
+def process_order(request, pk):
     # order = Order.objects.get(id = pk)
-    order = get_object_or_404(Order,id = pk)
+    order = get_object_or_404(Order, id=pk)
     order.payment_status = request.data["payment_status"]
     order.save()
-    serializer = OrderSerializers(order,many=False)
-    return Response({"order":serializer.data},status=status.HTTP_200_OK)
+    serializer = OrderSerializers(order, many=False)
+    return Response({"order": serializer.data}, status=status.HTTP_200_OK)
+
 
 @api_view(["DELETE"])
 @permission_classes([IsAdminUser])
-def delete_order(request,pk):
+def delete_order(request, pk):
     # order = Order.objects.get(id = pk)
-    order = get_object_or_404(Order,id = pk)
+    order = get_object_or_404(Order, id=pk)
     order.delete()
-    return Response({"order-details":f"order for id :{pk} is deleted"},status=status.HTTP_200_OK)
+    return Response(
+        {"order-details": f"order for id :{pk} is deleted"}, status=status.HTTP_200_OK
+    )
 
 
 stripe.api_key = config("STRIPE_PRIVATE_KEY")
 session_dict = dict()
 
+
 @api_view(["POST"])
-@permission_classes([IsAuthenticated]) #! --- authentiaction
+@permission_classes([IsAuthenticated])  #! --- authentiaction
 def create_checkout_session(request):
     YOUR_DOMAIN = get_current_host(request)
 
-    user = request.user #! --- authentication
+    user = request.user  #! --- authentication
     data = request.data
-    
+
     orders = data["order"]
-    
-    user_details ={
-        "user":user.id,
+
+    user_details = {
+        "user": user.id,
     }
-    checkout_order_items=[]
+    checkout_order_items = []
     for i in orders:
-        unit_amount = i["price"] 
+        unit_amount = i["price"]
         print(unit_amount)
         quantity = i["quantity"]
         print(quantity)
         # total_amount = unit_amount * quantity
-        
+
         try:
             customer = stripe.Customer.create(
-                email = user.email,
-                
+                email=user.email,
             )
-        except Exception as e: 
+        except Exception as e:
             print("Error in creating customer")
-            return Response({"Error":f"{e}"},status = status.HTTP_400_BAD_REQUEST)
-        
-        checkout_order_items.append({
-            "price_data":{
-                "currency" : "npr",
-                "product_data" : {
-                    "name":i["name"],
-                    # "images": 
-                    "metadata":{"product_id":i["product"],"user_id":user_details["user"]}
+            return Response({"Error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        checkout_order_items.append(
+            {
+                "price_data": {
+                    "currency": "npr",
+                    "product_data": {
+                        "name": i["name"],
+                        # "images":
+                        "metadata": {
+                            "product_id": i["product"],
+                            "user_id": user_details["user"],
+                        },
+                    },
+                    "recurring": {"interval": "year"},
+                    "unit_amount": unit_amount,
                 },
-                "recurring":{
-                    "interval":"year"
-                },
-                "unit_amount":unit_amount
-            },
-            "quantity":quantity
-        })
+                "quantity": quantity,
+            }
+        )
     checkout_session = stripe.checkout.Session.create(
-        customer = customer.id,
-        payment_method_types = ['card'],
-        metadata = user_details,
+        customer=customer.id,
+        payment_method_types=["card"],
+        metadata=user_details,
         # total_amount= checkout_session.metadata.product,
-        line_items = checkout_order_items,
+        line_items=checkout_order_items,
         # customer_email = user.email,
         # amount_total = total_amount,
-        mode = 'subscription',
+        mode="subscription",
         # subscription_data = {'trial_period_days':0,},#! <--------- trail period ----------->
-        success_url = YOUR_DOMAIN,
-        cancel_url = YOUR_DOMAIN,
-       
+        success_url=YOUR_DOMAIN,
+        cancel_url=YOUR_DOMAIN,
         # idempotency_key="keeee"
-        
     )
     global session_dict
     if checkout_session:
-        session_dict = {"session":checkout_session,"customer_id":checkout_session.customer}
+        session_dict = {
+            "session": checkout_session,
+            "customer_id": checkout_session.customer,
+        }
     # print(session_dict)
-    return Response({"session":checkout_session},status=status.HTTP_200_OK)
+    return Response({"session": checkout_session}, status=status.HTTP_200_OK)
+
 
 @api_view(["GET"])
 # @permission_classes([IsAuthenticated])
 def customer_portal(request):
     # print({"customer":session_dict})
     try:
-        stripe_customer_id = session_dict['customer_id']
+        stripe_customer_id = session_dict["customer_id"]
         # print("stripe_customer_id",stripe_customer_id)
-        
+
         customer_session = stripe.billing_portal.Session.create(
-            customer  = stripe_customer_id,
-            return_url = "http://localhost:8000/",
-        )  
-        return Response({"session":customer_session})
+            customer=stripe_customer_id,
+            return_url="http://localhost:8000/",
+        )
+        return Response({"session": customer_session})
     except Exception as e:
-        print("error in customer portal function ",e)
+        print("error in customer portal function ", e)
         # print({"session":session})
-    return Response({"Error":"No session found"})
+    return Response({"Error": "No session found"})
     # return Response({"session":customer_session})
-    
+
+
 @csrf_exempt
 @api_view(["POST"])
 # @permission_classes([IsAdminUser])
-def stripe_webhook(request):  
+def stripe_webhook(request):
     webhook_secret = config("STRIPE_WEBHOOK_SECRET")
     payload = request.body
     # print(payload)
     # print(Response(payload))
-    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+    sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
     # print("sig_header",sig_header)
     event = None
-    
+
     try:
-        event = stripe.Webhook.construct_event(
-            payload,sig_header,webhook_secret
-        )
-        
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+
     except ValueError as e:
-        return Response({"error":"Invalid Payload - ValueError"},status = status.HTTP_400_BAD_REQUEST)
-    
+        return Response(
+            {"error": "Invalid Payload - ValueError"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     except stripe.error.SignatureVerificationError as e:
-        return Response({"error":"Invalid Signature - SignatureVerificationError"},status = status.HTTP_400_BAD_REQUEST)
-    
+        return Response(
+            {"error": "Invalid Signature - SignatureVerificationError"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     #! =============== Creating the actual order and payment ================ #
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        
-        line_items = stripe.checkout.Session.list_line_items(session['id'])
-        
-        price = session['amount_total']
-        
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+
+        line_items = stripe.checkout.Session.list_line_items(session["id"])
+
+        price = session["amount_total"]
+
         # print("data",line_items['data'])
-        for item in line_items['data']:
+        for item in line_items["data"]:
             # description=item['description']
             # print(description)
             # print(f'item : {item}')
             try:
-                line_product =stripe.Product.retrieve(item.price.product)
+                line_product = stripe.Product.retrieve(item.price.product)
                 product_id = line_product.metadata.product_id
-                product = Product.objects.get(id = product_id)
-                
+                product = Product.objects.get(id=product_id)
+
             except Product.DoesNotExist:
                 print("error at line 160")
-                return Response({"error":"error at line 160","Error":str(e)},status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response(
+                    {"error": "error at line 160", "Error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             try:
                 user_id = session["metadata"]["user"]
-                print("userid ",user_id)
-                
-            except Exception as e :
+                print("userid ", user_id)
+
+            except Exception as e:
                 print(e)
-                return Response({"error":"error in line 167","Error":str(e)},status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"error": "error in line 167", "Error": str(e)},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             # user = session["metadata"]["user"]
             # # user = User.objects.get(id=line_product.metadata.session.user)
-            # print({"user":user})                
+            # print({"user":user})
             # try:
             #     invoice_item = stripe.InvoiceItem.create(
             #         indempotency_key = "this_is_a_key",
@@ -238,65 +276,105 @@ def stripe_webhook(request):
             #         currency = "npr",
             #         description= product.name
             #     )
-                
+
             # except Exception as e:
-            #     return Response({"error":"error at line 173","Error":str(e)}) 
-            
+            #     return Response({"error":"error at line 173","Error":str(e)})
+
             try:
-                print(user:=session.metadata.user)
-                item = Order.objects.create(  
-                user = myUser(session.metadata.user),
-                total_amount = price,
-                payment_mode = "Card",
-                payment_status = "Paid",
-                product = product,
+                print(user := session.metadata.user)
+                item = Order.objects.create(
+                    user=myUser(session.metadata.user),
+                    total_amount=price,
+                    payment_mode="Card",
+                    payment_status="Paid",
+                    product=product,
                 )
-                
-                
-            except Exception as e :
+
+            except Exception as e:
                 print("creating Object model in line 190")
-                return Response({"error":"creating Object model in line 190","ERROR":str(e)},status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "creating Object model in line 190", "ERROR": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             try:
-                invoice  = stripe.Invoice.create(
-                    customer = session["customer"],
+                invoice = stripe.Invoice.create(
+                    customer=session["customer"],
                     # customer = "cus_OCqqQnotYIbvpB",
                     collection_method="charge_automatically",
                     # description=description,
                 )
-                
-            except Exception as e :
+
+            except Exception as e:
                 print("error in line 203")
                 # print(item_cpy)
-                return Response({"error":"error in line 198","Error":str(e)},status =status.HTTP_400_BAD_REQUEST)
-            
+                return Response(
+                    {"error": "error in line 198", "Error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             try:
                 # print({"invoice":invoice})
                 final_invoice = stripe.Invoice.finalize_invoice(invoice.id)
             #     stripe.Invoice.send_invoice(final_invoice.id)
-                
-            except Exception as e :
+
+            except Exception as e:
                 print("error in line 213")
-                return Response({"error":"error in line 213","Error":str(e)},status = status.HTTP_400_BAD_REQUEST)
-            
+                return Response(
+                    {"error": "error in line 213", "Error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         print("Payment Successfull")
-        return Response({'details':'Payment successful'})
-    
+
+        # * ======== make notification ========= *#
+        try:
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(
+                    "/Users/nischal/Documents/project/ProjectAdvisor/serviceaccountkey.json"
+                )
+                firebase_admin.initialize_app(cred)
+
+            devices = FCMDevice.objects.all()
+            for device in devices:
+                message = messaging.Message(
+                    data={
+                        "title": f"order no : {item.id}",
+                        "body": f"product name : {product.name} price : {price}",
+                    },
+                    notification=messaging.Notification(
+                        title=f"order no : {item.id}",
+                        body=f"product name : {product.name} price : {price}",
+                    ),
+                    android=messaging.AndroidConfig(
+                        priority="high",
+                    ),
+                    token=device.registration_id,
+                )
+                device.send_message(message=message)
+        except Exception as e:
+            print("error while sending notification in checkout", e)
+
+        return Response({"details": "Payment successful"},status=status.HTTP_200_OK)
+
     else:
-        return Response({"error": f"Unhandled event type: {event['type']}"},status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response(
+            {"error": f"Unhandled event type: {event['type']}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     #! ======= order status Update not working ==============>
     # try:
     #     print("EE")
     #     print("event",event['type'])
-        
+
     #     if event['type'] == 'customer.subscription.updated':
     #         subscription = event['data']['object']
     #         user_id = subscription['metadata']['user']
     #         user = myUser.objects.get(id=user_id)
-            
+
     #         try:
     #             user_subscription,created = UserSubscription.objects.get_or_create(user=user)
-                
+
     #         except Exception as e:
     #             print("Error in user_subscription")
     #             return Response("Error in user_subscription")
@@ -305,15 +383,12 @@ def stripe_webhook(request):
     #             # Update the user's ability to place orders here
     #             user_subscription.can_order = True
     #             user.save()
-                
+
     #         elif subscription['status'] == 'active':
     #             # If the subscription is active, the user can't place orders
     #             user_subscription.can_order = False
     #             user_subscription.save()
-                
+
     # except Exception as e:
     #     print({"details":"error in order status update"})
     #     return Response({"details":"error in order status"},status=status.HTTP_400_BAD_REQUEST)
-    
-            
-
