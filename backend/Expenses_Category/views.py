@@ -38,7 +38,8 @@ class ExpensesCategoryListView(APIView):
     def post(self, request):
         try:
             data = request.data
-            exCategory = ExpensesCategory.objects.create(name=data["name"], image = data["image"], user=request.user)
+            # exCategory = ExpensesCategory.objects.create(name=data["name"], image = data["image"], user=request.user)
+            exCategory = ExpensesCategory.objects.create(name=data["name"], user=request.user)
             serializer = CategoryExpenseSerializer(exCategory, many=False)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except:

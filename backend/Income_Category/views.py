@@ -36,7 +36,8 @@ class CategoryListView(APIView):
     def post(self, request):
         try:
             data = request.data
-            incCategory = IncomeCategory.objects.create(name=data["name"],image=data["image"], user=request.user)
+            # incCategory = IncomeCategory.objects.create(name=data["name"],image=data["image"], user=request.user)
+            incCategory = IncomeCategory.objects.create(name=data["name"], user=request.user)
             serializer = CategoryIncomeSerializer(incCategory, many=False)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except:

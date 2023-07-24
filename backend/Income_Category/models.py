@@ -14,7 +14,7 @@ from django.db.models.signals import post_save
 class IncomeCategory(models.Model):
     user = models.ForeignKey(myUser, related_name="categories", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True, blank=True)
-    image = models.ImageField(upload_to='media/', null=True, blank=True)
+    image = models.ImageField(upload_to='media/', null=True, blank=True, default='media/others.png')
     date = models.DateField(auto_now_add=True)
     
     def __str__(self) -> str:
