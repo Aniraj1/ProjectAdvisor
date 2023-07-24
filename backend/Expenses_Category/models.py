@@ -14,7 +14,7 @@ class ExpensesCategory(models.Model):
     user = models.ForeignKey(myUser, related_name="expense_categories", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=50, null=True, blank=True)
     date = models.DateField(auto_now_add=True)
-    image = models.ImageField(upload_to='media/', null=True, blank=True)
+    image = models.ImageField(upload_to='media/', null=True, blank=True, default='media/others.png')
     
     def __str__(self) -> str:
         return self.name
