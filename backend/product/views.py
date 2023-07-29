@@ -62,8 +62,9 @@ def add_fcm_device(request):
     # product = data.get('product')
 
     fcm_token = data["fcm_token"]
+    # fcm_token = data.get("fcm_token","Not present")
     if not fcm_token:
-        return Response({"detail": "FCM token not provided"}, status=400)
+        return Response({"detail": "FCM token not provided"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         device  = FCMDevice()
@@ -82,7 +83,7 @@ def add_fcm_device(request):
         )
 
     except IntegrityError:
-        return Response({"detail": "This FCM token is already in use."}, status=400)
+        return Response({"detail": "This FCM token is already in use."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         print("error creating FCM device", e)
     return Response({'detail':'FCM device added and created successfully'},status=status.HTTP_201_CREATED)

@@ -3,8 +3,8 @@ from .models import Order,UserSubscription
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display=['id','price','user','created_at','payment_status','payment_mode']
-    list_filter = ['price', 'user', 'created_at','payment_status','payment_mode']
+    list_display=['id','total_amount','user','created_at','payment_status','payment_mode']
+    list_filter = ['total_amount', 'user', 'created_at','payment_status','payment_mode']
     
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):

@@ -40,11 +40,7 @@ def get_single_order(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes(
-    [
-        IsAuthenticated,
-    ]
-)
+@permission_classes([IsAuthenticated])
 def add_order(request):
     user = request.user  #! -- User authentication- ------------- --------------->
     print("user", user)
@@ -128,15 +124,19 @@ def create_checkout_session(request):
     checkout_order_items = []
     for i in orders:
         unit_amount = i["price"]
-        print(unit_amount)
+        # print(unit_amount)
         quantity = i["quantity"]
-        print(quantity)
+        # print(quantity)
         # total_amount = unit_amount * quantity
 
         try:
-            customer = stripe.Customer.create(
+            try:
+                 customer = stripe.Customer.list(email = user.email).data[0]
+            except IndexError:
+                customer = stripe.Customer.create(
                 email=user.email,
-            )
+                )
+                
         except Exception as e:
             print("Error in creating customer")
             return Response({"Error": f"{e}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -351,6 +351,7 @@ def stripe_webhook(request):
                     token=device.registration_id,
                 )
                 device.send_message(message=message)
+                
         except Exception as e:
             print("error while sending notification in checkout", e)
 
