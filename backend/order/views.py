@@ -131,11 +131,11 @@ def create_checkout_session(request):
 
         try:
             try:
-                 customer = stripe.Customer.list(email = user.email).data[0]
+                customer = stripe.Customer.list(email = user.email).data[0]
+                 #customer = stripe.Customer.list(email=user.email) 
+                 #first_customer = customer.data[0]
             except IndexError:
-                customer = stripe.Customer.create(
-                email=user.email,
-                )
+                customer = stripe.Customer.create(email=user.email)
                 
         except Exception as e:
             print("Error in creating customer")
